@@ -89,11 +89,12 @@ async def on_ready():
 async def on_message(message: discord.Message):
     # Auto-reply to the hint bot
     if message.author.id == HINT_BOT_ID:
-        hint = extract_hint_from_message(message)
-        if hint:
-            await send_answer(message, hint)
-        return
-
+        print(f"CONTENT: {repr(message.content)}")
+        print(f"EMBEDS: {message.embeds}")
+        print(f"COMPONENTS: {message.components}")
+        for c in message.components:
+            print(f"  COMP: {repr(c)}")
+    return
     if message.author.bot:
         return
 
