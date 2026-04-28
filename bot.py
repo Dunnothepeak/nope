@@ -41,35 +41,10 @@ def search_database(hint: str) -> list:
         return []
     return [entry for entry in ANIME_LIST if pattern.match(entry)]
 
-def extract_hint_from_message(message: discord.Message):
-    """Try to extract hint text from a message (content or components)."""
-    # Check plain content first
-    candidates = []
-    if message.content:
-        candidates.append(message.content)
-
-    # Check components (Components V2 / containers)
-    for component in message.components:
-        # Walk nested components
-        stack = [component]
-        while stack:
-            comp = stack.pop()
-            if hasattr(comp, "components"):
-                stack.extend(comp.components)
-            if hasattr(comp, "content") and comp.content:
-                candidates.append(comp.content)
-
-    for text in candidates:
-        if "💡" in text or "Hint" in text:
-            return clean_hint(text)
-
-    return None
-
 async def send_answer(message: discord.Message, hint: str):
     matches = search_database(hint)
-
     if not matches:
-        text = "No matches found."
+        return
     elif len(matches) == 1:
         text = matches[0]
     else:
@@ -89,12 +64,14 @@ async def on_ready():
 async def on_message(message: discord.Message):
     # Auto-reply to the hint bot
     if message.author.id == HINT_BOT_ID:
-        print(f"CONTENT: {repr(message.content)}")
-        print(f"EMBEDS: {message.embeds}")
-        print(f"COMPONENTS: {message.components}")
-        for c in message.components:
-            print(f"  COMP: {repr(c)}")
-    return
+        for embed in message.embeds:
+            text = embed.description or ""
+            if "💡" in text or "Hint" in text:
+                hint = clean_hint(text)
+                if hint:
+                    await send_answer(message, hint)
+        return
+
     if message.author.bot:
         return
 
