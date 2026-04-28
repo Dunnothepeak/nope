@@ -20,6 +20,7 @@ ANIME_LIST = load_database()
 
 def clean_hint(text: str) -> str:
     cleaned = re.sub(r"💡\s*Hint\s*", "", text)
+    cleaned = re.sub(r":bulb:\s*Hint\s*", "", cleaned)
     cleaned = cleaned.replace("`", "")
     return cleaned.strip()
 
@@ -63,8 +64,12 @@ async def on_ready():
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.id == HINT_BOT_ID:
-        for i, embed in enumerate(message.embeds):
-            print(f"EMBED[{i}] title={repr(embed.title)} desc={repr(embed.description)} fields={embed.fields}")
+        for embed in message.embeds:
+            text = embed.title or ""
+            if "Hint" in text or "bulb" in text:
+                hint = clean_hint(text)
+                if hint:
+                    await send_answer(message, hint)
         return
 
     if message.author.bot:
