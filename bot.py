@@ -1,13 +1,13 @@
 import discord
+from discord.ext import commands
 import re
 import os
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = discord.Bot(intents=intents)
+bot = commands.Bot(command_prefix="\x00", intents=intents, help_command=None)
 
-# Load the anime database on startup
 DB_PATH = os.path.join(os.path.dirname(__file__), "myAnimeList-062020.txt")
 
 def load_database():
@@ -31,8 +31,7 @@ def build_pattern(hint: str) -> re.Pattern:
             parts.append(r"\s")
         else:
             parts.append(re.escape(char))
-    pattern = "".join(parts)
-    return re.compile(f"^{pattern}$", re.IGNORECASE)
+    return re.compile(f"^{''.join(parts)}$", re.IGNORECASE)
 
 def search_database(hint: str) -> list:
     try:
@@ -65,21 +64,15 @@ async def on_message(message: discord.Message):
     matches = search_database(cleaned)
 
     if not matches:
-        text = f"-# No matches found."
+        text = "No matches found."
     elif len(matches) == 1:
-        text = f"## {matches[0]}"
+        text = matches[0]
     else:
-        lines = "\n".join(f"-# {m}" for m in matches[:10])
-        extra = f"\n-# ...and {len(matches) - 10} more" if len(matches) > 10 else ""
-        text = lines + extra
+        text = "\n".join(matches[:10])
+        if len(matches) > 10:
+            text += f"\n...and {len(matches) - 10} more"
 
-    container = discord.ui.Container(
-        discord.ui.TextDisplay(text)
-    )
-
-    view = discord.ui.LayoutView()
-    view.add_item(container)
-
-    await message.reply(view=view)
+    embed = discord.Embed(description=text)
+    await message.reply(embed=embed, mention_author=False)
 
 bot.run(os.environ["DISCORD_TOKEN"])
