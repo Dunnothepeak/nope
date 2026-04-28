@@ -9,6 +9,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="\x00", intents=intents, help_command=None)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "myAnimeList-062020.txt")
+HINT_BOT_ID = 429656936435286016
 
 def load_database():
     with open(DB_PATH, "r", encoding="utf-8") as f:
@@ -17,8 +18,8 @@ def load_database():
 
 ANIME_LIST = load_database()
 
-def clean_hint(message: str) -> str:
-    cleaned = re.sub(r"💡\s*Hint\s*", "", message)
+def clean_hint(text: str) -> str:
+    cleaned = re.sub(r"💡\s*Hint\s*", "", text)
     cleaned = cleaned.replace("`", "")
     return cleaned.strip()
 
@@ -40,28 +41,32 @@ def search_database(hint: str) -> list:
         return []
     return [entry for entry in ANIME_LIST if pattern.match(entry)]
 
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    print(f"Database loaded: {len(ANIME_LIST)} entries")
+def extract_hint_from_message(message: discord.Message):
+    """Try to extract hint text from a message (content or components)."""
+    # Check plain content first
+    candidates = []
+    if message.content:
+        candidates.append(message.content)
 
-@bot.event
-async def on_message(message: discord.Message):
-    if message.author.bot:
-        return
+    # Check components (Components V2 / containers)
+    for component in message.components:
+        # Walk nested components
+        stack = [component]
+        while stack:
+            comp = stack.pop()
+            if hasattr(comp, "components"):
+                stack.extend(comp.components)
+            if hasattr(comp, "content") and comp.content:
+                candidates.append(comp.content)
 
-    content = message.content.strip()
+    for text in candidates:
+        if "💡" in text or "Hint" in text:
+            return clean_hint(text)
 
-    if not re.match(r"^hnt\s+", content, re.IGNORECASE):
-        return
+    return None
 
-    raw_hint = content[content.index(" "):].strip()
-    cleaned = clean_hint(raw_hint)
-
-    if not cleaned:
-        return
-
-    matches = search_database(cleaned)
+async def send_answer(message: discord.Message, hint: str):
+    matches = search_database(hint)
 
     if not matches:
         text = "No matches found."
@@ -74,5 +79,34 @@ async def on_message(message: discord.Message):
 
     embed = discord.Embed(description=text)
     await message.reply(embed=embed, mention_author=False)
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    print(f"Database loaded: {len(ANIME_LIST)} entries")
+
+@bot.event
+async def on_message(message: discord.Message):
+    # Auto-reply to the hint bot
+    if message.author.id == HINT_BOT_ID:
+        hint = extract_hint_from_message(message)
+        if hint:
+            await send_answer(message, hint)
+        return
+
+    if message.author.bot:
+        return
+
+    # Manual hnt command
+    content = message.content.strip()
+    if not re.match(r"^hnt\s+", content, re.IGNORECASE):
+        return
+
+    raw_hint = content[content.index(" "):].strip()
+    cleaned = clean_hint(raw_hint)
+    if not cleaned:
+        return
+
+    await send_answer(message, cleaned)
 
 bot.run(os.environ["DISCORD_TOKEN"])
