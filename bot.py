@@ -62,20 +62,14 @@ async def on_ready():
 
 @bot.event
 async def on_message(message: discord.Message):
-    # Auto-reply to the hint bot
     if message.author.id == HINT_BOT_ID:
-        for embed in message.embeds:
-            text = embed.description or ""
-            if "💡" in text or "Hint" in text:
-                hint = clean_hint(text)
-                if hint:
-                    await send_answer(message, hint)
+        for i, embed in enumerate(message.embeds):
+            print(f"EMBED[{i}] title={repr(embed.title)} desc={repr(embed.description)} fields={embed.fields}")
         return
 
     if message.author.bot:
         return
 
-    # Manual hnt command
     content = message.content.strip()
     if not re.match(r"^hnt\s+", content, re.IGNORECASE):
         return
