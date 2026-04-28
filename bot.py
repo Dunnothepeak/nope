@@ -47,9 +47,9 @@ async def send_answer(message: discord.Message, hint: str):
     if not matches:
         return
     elif len(matches) == 1:
-        f"# {matches[0]}"
+       text = f"# {matches[0]}"
     else:
-        text = "\n".join(f"# {m}" for m in matches[:10])
+        text = "\n".join(f"## {m}" for m in matches[:10])
         if len(matches) > 10:
             text += f"\n...and {len(matches) - 10} more"
 
